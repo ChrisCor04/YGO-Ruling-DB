@@ -24,9 +24,11 @@ router.get("/", async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT c.card_id, cl.name, cl.card_type, cl.attribute, cl.atk, cl.def, cl.level,
+              ci.image_url_small,
               ROUND(similarity(cl.name, $1)::numeric, 2) AS score
        FROM cards c
        JOIN card_localizations cl ON c.card_id = cl.card_id AND cl.language = 'en'
+       LEFT JOIN card_images ci ON c.card_id = ci.card_id AND ci.is_primary = TRUE
        WHERE cl.name ILIKE '%' || $1 || '%'
           OR similarity(cl.name, $1) > 0.3
        ORDER BY
@@ -57,17 +59,17 @@ router.get("/:id", async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT c.card_id, cl.name, cl.effect_text, cl.atk, cl.def,
-              cl.attribute, cl.card_type, cl.level, cl.link_arrows, cl.properties
+              cl.attribute, cl.card_type, cl.level, cl.link_arrows, cl.properties,
+              ci.image_url_small
        FROM cards c
        JOIN card_localizations cl ON c.card_id = cl.card_id AND cl.language = 'en'
+       LEFT JOIN card_images ci ON c.card_id = ci.card_id AND ci.is_primary = TRUE
        WHERE c.card_id = $1`,
       [id]
     );
 
-    // if no card was found at this id, return 404 error
     if (rows.length === 0) return res.status(404).json({ error: "Not found" });
 
-    // fetch the print info for the card, like its date printed
     const { rows: prints } = await pool.query(
       `SELECT print_code, print_date
        FROM card_prints
@@ -76,7 +78,15 @@ router.get("/:id", async (req, res) => {
       [id]
     );
 
-    res.json({ ...rows[0], prints });
+    const { rows: artworks } = await pool.query(
+      `SELECT ygoprodeck_img_id, image_url_small, is_primary
+       FROM card_images
+       WHERE card_id = $1 AND image_status = 'downloaded'
+       ORDER BY is_primary DESC`,
+      [id]
+    );
+
+    res.json({ ...rows[0], prints, artworks });
   } catch (err) { // log an error if something goes wrong with the database query, and return a 500 error to the client
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
