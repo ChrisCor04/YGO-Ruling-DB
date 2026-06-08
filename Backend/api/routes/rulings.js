@@ -13,13 +13,16 @@ function parseId(param) {
 // Use above format to ensure only this many rulings are returned at once, and the client can specify which page of results they want.
 router.get("/", async (req, res) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, parseInt(req.query.limit) || 20);
+    const page   = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit  = Math.min(100, parseInt(req.query.limit) || 20);
     const offset = (page - 1) * limit;
-    const { card } = req.query;
+    const { card, status } = req.query;
+
+    if (status && typeof status !== "string") {
+      return res.status(400).json({ error: "Invalid status parameter" });
+    }
 
     // GET /api/rulings?card=dark magician
-    // Find the best-matching card by name, then return all its rulings.
     if (card && card.trim().length >= 2) {
       const term = card.trim();
 
@@ -39,13 +42,21 @@ router.get("/", async (req, res) => {
 
       const { card_id, name: cardName } = cardRows[0];
 
+      const params = [card_id];
+      let where = "WHERE rc.card_id = $1";
+
+      if (status) {
+        params.push(status);
+        where += ` AND r.translation_status = $${params.length}`;
+      }
+
       const { rows } = await pool.query(
         `SELECT r.ruling_id, r.external_id, r.title, r.translation_status, r.tags, r.created_at
          FROM rulings r
          JOIN ruling_cards rc ON r.ruling_id = rc.ruling_id
-         WHERE rc.card_id = $1
+         ${where}
          ORDER BY r.ruling_id`,
-        [card_id]
+        params
       );
 
       return res.json({
@@ -56,16 +67,29 @@ router.get("/", async (req, res) => {
     }
 
     // Default: paginated list of all rulings
+    const params = [];
+    let where = "";
+
+    if (status) {
+      params.push(status);
+      where = `WHERE translation_status = $${params.length}`;
+    }
+
+    params.push(limit);
+    params.push(offset);
+
     const { rows } = await pool.query(
       `SELECT ruling_id, external_id, title, translation_status, tags, created_at
        FROM rulings
+       ${where}
        ORDER BY ruling_id
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
     );
 
     const { rows: countRows } = await pool.query(
-      "SELECT COUNT(*) AS total FROM rulings"
+      `SELECT COUNT(*) AS total FROM rulings ${where}`,
+      status ? [status] : []
     );
 
     res.json({
