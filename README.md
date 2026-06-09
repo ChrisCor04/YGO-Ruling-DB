@@ -6,6 +6,7 @@ A REST API and PostgreSQL database containing 15,000+ Yu-Gi-Oh! rulings and card
 
 - Search cards using fuzzy matching and partial names
 - Retrieve detailed card information and print history
+- Retrieve card images in small sizes only
 - Browse and query 15,000+ rulings
 - Resolve card references inside ruling text
 - RESTful API built with Node.js and Express
@@ -17,12 +18,14 @@ A REST API and PostgreSQL database containing 15,000+ Yu-Gi-Oh! rulings and card
 - Express.js
 - PostgreSQL
 - Jest
+  
 
 ## Dataset
 
 Current database contents include:
 
 - 15,000+ rulings
+- 14,000+ Yu-Gi-Oh! Cards
 - Thousands of card records
 - Historical print information
 - Official ruling metadata
@@ -54,6 +57,7 @@ npm run dev
 - Implemented fuzzy matching for card searches
 - Built automatic card reference resolution within ruling text
 - Designed a relational PostgreSQL schema for cards, rulings, prints, and metadata
+- Retrieving correct images for cards using multiple APIs
 
 ## Future Improvements
 
