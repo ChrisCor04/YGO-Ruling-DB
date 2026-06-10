@@ -2,6 +2,7 @@
 const express = require("express");
 const pool = require("../db");
 const resolveCardNames = require("../utils/resolveCardNames");
+const { decodeProperties } = require("../utils/cardProperties");
 
 const router = express.Router();
 
@@ -24,7 +25,7 @@ router.get("/", async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT c.card_id, cl.name, cl.card_type, cl.attribute, cl.atk, cl.def, cl.level,
-              ci.image_url_small,
+              cl.properties, ci.image_url_small,
               ROUND(similarity(cl.name, $1)::numeric, 2) AS score
        FROM cards c
        JOIN card_localizations cl ON c.card_id = cl.card_id AND cl.language = 'en'
@@ -42,7 +43,12 @@ router.get("/", async (req, res) => {
       [term]
     );
 
-    res.json(rows);
+    const decoded = rows.map((card) => ({
+      ...card,
+      property_names: decodeProperties(card.properties),
+    }));
+
+    res.json(decoded);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -86,7 +92,10 @@ router.get("/:id", async (req, res) => {
       [id]
     );
 
-    res.json({ ...rows[0], prints, artworks });
+    const card = rows[0];
+    card.property_names = decodeProperties(card.properties);
+
+    res.json({ ...card, prints, artworks });
   } catch (err) { // log an error if something goes wrong with the database query, and return a 500 error to the client
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
