@@ -1,0 +1,51 @@
+const CARD_PROPERTIES = {
+  1:  "Creator God",
+  2:  "Special Summon Monster",
+  3:  "Beast",
+  4:  "Effect",
+  5:  "Fish",
+  6:  "Normal",
+  7:  "Flip",
+  8:  "Spellcaster",
+  9:  "Machine",
+  10: "Union",
+  11: "Fusion",
+  12: "Warrior",
+  13: "Beast-Warrior",
+  14: "Fiend",
+  15: "Fairy",
+  16: "Pendulum",
+  17: "Sea Serpent",
+  18: "Xyz",
+  19: "Synchro",
+  20: "Tuner",
+  21: "Dragon",
+  22: "Wyrm",
+  23: "Link",
+  24: "Rock",
+  25: "Plant",
+  26: "Spirit",
+  27: "Ritual",
+  28: "Gemini",
+  29: "Reptile",
+  30: "Cyberse",
+  31: "Aqua",
+  32: "Zombie",
+  33: "Psychic",
+  34: "Insect",
+  35: "Winged Beast",
+  36: "Dinosaur",
+  37: "Pyro",
+  38: "Thunder",
+  39: "Divine-Beast",
+  40: "Toon",
+  41: "Illusion",
+  42: "Spirito",
+};
+
+function decodeProperties(ids) {
+  if (!ids || ids.length === 0) return [];
+  return ids.map((id) => CARD_PROPERTIES[id] ?? `Unknown(${id})`);
+}
+
+module.exports = { CARD_PROPERTIES, decodeProperties };
