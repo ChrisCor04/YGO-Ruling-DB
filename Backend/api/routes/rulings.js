@@ -16,10 +16,16 @@ router.get("/", async (req, res) => {
     const page   = Math.max(1, parseInt(req.query.page)  || 1);
     const limit  = Math.min(100, parseInt(req.query.limit) || 20);
     const offset = (page - 1) * limit;
-    const { card, status } = req.query;
+    const { card, status, search } = req.query;
 
     if (status && typeof status !== "string") {
       return res.status(400).json({ error: "Invalid status parameter" });
+    }
+
+    if (search !== undefined) {
+      if (typeof search !== "string" || search.trim().length < 2) {
+        return res.status(400).json({ error: "Search query must be at least 2 characters" });
+      }
     }
 
     // GET /api/rulings?card=dark magician
@@ -50,12 +56,21 @@ router.get("/", async (req, res) => {
         where += ` AND r.translation_status = $${params.length}`;
       }
 
+      let orderBy = "r.ruling_id";
+
+      if (search) {
+        params.push(search.trim());
+        const searchRef = `$${params.length}`;
+        where += ` AND r.search_vector @@ websearch_to_tsquery('english', ${searchRef})`;
+        orderBy = `ts_rank(r.search_vector, websearch_to_tsquery('english', ${searchRef})) DESC`;
+      }
+
       const { rows } = await pool.query(
         `SELECT r.ruling_id, r.external_id, r.title, r.translation_status, r.tags, r.created_at
          FROM rulings r
          JOIN ruling_cards rc ON r.ruling_id = rc.ruling_id
          ${where}
-         ORDER BY r.ruling_id`,
+         ORDER BY ${orderBy}`,
         params
       );
 
@@ -69,10 +84,20 @@ router.get("/", async (req, res) => {
     // Default: paginated list of all rulings
     const params = [];
     let where = "";
+    let orderBy = "ruling_id";
 
     if (status) {
       params.push(status);
       where = `WHERE translation_status = $${params.length}`;
+    }
+
+    if (search) {
+      params.push(search.trim());
+      const searchRef = `$${params.length}`;
+      where = where
+        ? `${where} AND search_vector @@ websearch_to_tsquery('english', ${searchRef})`
+        : `WHERE search_vector @@ websearch_to_tsquery('english', ${searchRef})`;
+      orderBy = `ts_rank(search_vector, websearch_to_tsquery('english', ${searchRef})) DESC`;
     }
 
     params.push(limit);
@@ -82,14 +107,15 @@ router.get("/", async (req, res) => {
       `SELECT ruling_id, external_id, title, translation_status, tags, created_at
        FROM rulings
        ${where}
-       ORDER BY ruling_id
+       ORDER BY ${orderBy}
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params
     );
 
+    const countParams = params.slice(0, params.length - 2);
     const { rows: countRows } = await pool.query(
       `SELECT COUNT(*) AS total FROM rulings ${where}`,
-      status ? [status] : []
+      countParams
     );
 
     res.json({
