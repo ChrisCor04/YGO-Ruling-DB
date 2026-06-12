@@ -1,16 +1,16 @@
 # YGO Ruling DB
 
-A REST API and PostgreSQL database containing 15,000+ Yu-Gi-Oh! rulings and card records sourced from YGOResources.
+A REST API and PostgreSQL database containing 15,000+ Yu-Gi-Oh! rulings and 14,000+ card records sourced from YGOResources and related public card data APIs.
 
 ## Features
 
 - Search cards using fuzzy matching and partial names
-- Retrieve detailed card information and print history
-- Retrieve card images in small sizes only
-- Browse and query 15,000+ rulings
-- Resolve card references inside ruling text
+- Retrieve detailed card information, print history, and metadata
+- Retrieve optimized small-size card images
+- Browse and query 15,000+ official rulings
+- Resolve card references within ruling text
 - RESTful API built with Node.js and Express
-- PostgreSQL-backed data storage
+- PostgreSQL-backed relational data storage
 
 ## Tech Stack
 
@@ -18,17 +18,16 @@ A REST API and PostgreSQL database containing 15,000+ Yu-Gi-Oh! rulings and card
 - Express.js
 - PostgreSQL
 - Jest
-  
 
 ## Dataset
 
 Current database contents include:
 
 - 15,000+ rulings
-- 14,000+ Yu-Gi-Oh! Cards
-- Thousands of card records
+- 14,000+ Yu-Gi-Oh! cards
 - Historical print information
 - Official ruling metadata
+- Card images and reference data
 
 ## Getting Started
 
@@ -40,6 +39,8 @@ npm install
 ```
 
 ### Configure Environment Variables
+
+Create a `.env` file inside the `Backend` directory:
 
 ```env
 DATABASE_URL=postgresql://...
@@ -54,16 +55,17 @@ npm run dev
 ## Technical Challenges
 
 - Imported and normalized thousands of cards and rulings from external data sources
-- Implemented fuzzy matching for card searches
-- Built automatic card reference resolution within ruling text
 - Designed a relational PostgreSQL schema for cards, rulings, prints, and metadata
-- Retrieving correct images for cards using multiple APIs
+- Implemented fuzzy matching for flexible card search
+- Built automatic card reference resolution within ruling text
+- Integrated multiple APIs to retrieve accurate card data and images
 
 ## Future Improvements
 
 - Advanced filtering and search
-- User Friendly UI
-- Q&A System for users to ask and answer questions
+- User-friendly web interface
+- Q&A system for users to ask and answer ruling questions
 - Public deployment
 - API documentation
 - Performance optimization
+
