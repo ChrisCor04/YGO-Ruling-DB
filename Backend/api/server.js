@@ -2,6 +2,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const rateLimit = require("express-rate-limit");
 require("dotenv").config({ path: path.join(__dirname, "../.env") });
 
 const rulingsRouter = require("./routes/rulings");
@@ -10,8 +11,17 @@ const cardsRouter = require("./routes/cards");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const limiter = rateLimit({
+  windowMs: 60 * 1000,   // 1 minute window
+  max: 60,               // 60 requests per window per IP
+  standardHeaders: true, // Return rate limit info in RateLimit-* headers
+  legacyHeaders: false,
+  message: { error: "Too many requests, please slow down." },
+});
+
 app.use(cors());
 app.use(express.json());
+app.use("/api", limiter);
 
 app.use("/api/rulings", rulingsRouter);
 app.use("/api/cards", cardsRouter);
