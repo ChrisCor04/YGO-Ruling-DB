@@ -1,6 +1,6 @@
 const express = require("express");
 const pool = require("../db");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requireRole } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -63,8 +63,68 @@ router.post("/", requireAuth, async (req, res) => {
       `INSERT INTO questions (user_id, card_id, title, body)
        VALUES ($1, $2, $3, $4)
        RETURNING question_id, title, status, created_at`,
-      [req.user.sub, card_id ?? null, title.trim(), body.trim()]
+      [req.user.id, card_id ?? null, title.trim(), body.trim()]
     );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/questions/:id/answers - list answers for a question
+router.get("/:id/answers", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: "Invalid ID" });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT a.answer_id, a.body, a.created_at, a.user_id
+       FROM answers a
+       WHERE a.question_id = $1
+       ORDER BY a.created_at ASC`,
+      [id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/questions/:id/answers - post an answer (judges only)
+router.post("/:id/answers", requireAuth, requireRole("judge"), async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    return res.status(400).json({ error: "Invalid ID" });
+  }
+
+  const { body } = req.body;
+  if (!body || body.trim().length < 10) {
+    return res.status(400).json({ error: "Answer must be at least 10 characters" });
+  }
+
+  try {
+    const { rows: question } = await pool.query(
+      `SELECT question_id FROM questions WHERE question_id = $1`,
+      [id]
+    );
+    if (question.length === 0) return res.status(404).json({ error: "Question not found" });
+
+    const { rows } = await pool.query(
+      `INSERT INTO answers (question_id, user_id, body)
+       VALUES ($1, $2, $3)
+       RETURNING answer_id, body, created_at`,
+      [id, req.user.id, body.trim()]
+    );
+
+    await pool.query(
+      `UPDATE questions SET status = 'answered', updated_at = NOW() WHERE question_id = $1`,
+      [id]
+    );
+
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
