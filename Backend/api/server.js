@@ -8,6 +8,7 @@ require("dotenv").config({ path: path.join(__dirname, "../.env") });
 const rulingsRouter = require("./routes/rulings");
 const cardsRouter = require("./routes/cards");
 const questionsRouter = require("./routes/questions");
+const userRouter = require("./routes/user");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +28,7 @@ app.use("/api", limiter);
 app.use("/api/rulings", rulingsRouter);
 app.use("/api/cards", cardsRouter);
 app.use("/api/questions", questionsRouter);
+app.use("/api", userRouter);
 
 // Only start listening when run directly, not when imported by tests
 if (require.main === module) {
