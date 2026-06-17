@@ -1,6 +1,7 @@
 const express = require("express");
 const pool = require("../db");
 const resolveCardNames = require("../utils/resolveCardNames");
+const decodeTags = require("../utils/decodeTags");
 
 const router = express.Router();
 
@@ -77,7 +78,7 @@ router.get("/", async (req, res) => {
       return res.json({
         total: rows.length,
         card: { card_id, name: cardName },
-        results: rows,
+        results: rows.map((r) => ({ ...r, ...decodeTags(r.tags) })),
       });
     }
 
@@ -122,7 +123,7 @@ router.get("/", async (req, res) => {
       page,
       limit,
       total: parseInt(countRows[0].total),
-      results: rows,
+      results: rows.map((r) => ({ ...r, ...decodeTags(r.tags) })),
     });
   } catch (err) {
     console.error(err);
@@ -165,7 +166,7 @@ router.get("/:id", async (req, res) => {
       [id]
     );
 
-    res.json({ ...ruling, cards });
+    res.json({ ...ruling, ...decodeTags(ruling.tags), cards });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
