@@ -25,6 +25,10 @@ app.use(cors());
 app.use(express.json());
 app.use("/api", limiter);
 
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 app.use("/api/rulings", rulingsRouter);
 app.use("/api/cards", cardsRouter);
 app.use("/api/questions", questionsRouter);
