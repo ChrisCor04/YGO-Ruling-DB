@@ -11,44 +11,62 @@ function parseId(param) {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
-// GET /api/cards?name=dark magician
-// Searches cards by name. Uses ILIKE for substring matches and pg_trgm similarity
-// as a fallback for typos. Results are ranked: exact → starts-with → contains → fuzzy.
+// GET /api/cards?name=&type=&attribute=
+// name uses fuzzy search; type and attribute are exact filters. At least one param required.
 router.get("/", async (req, res) => {
-  const { name } = req.query;
-  if (!name || name.trim().length < 2) {
-    return res.status(400).json({ error: "Provide a name query param (min 2 characters)" });
+  const { name, type, attribute } = req.query;
+
+  if (!name && !type && !attribute) {
+    return res.status(400).json({ error: "Provide at least one filter: name, type, or attribute" });
   }
 
-  const term = name.trim();
+  if (name && name.trim().length < 2) {
+    return res.status(400).json({ error: "name must be at least 2 characters" });
+  }
 
   try {
+    const params = [];
+    const conditions = ["cl.language = 'en'"];
+    let orderBy = "cl.name ASC";
+    let scoreCol = "NULL::numeric AS score";
+
+    if (name) {
+      const term = name.trim();
+      params.push(term);
+      const ref = `$${params.length}`;
+      conditions.push(`(cl.name ILIKE '%' || ${ref} || '%' OR similarity(cl.name, ${ref}) > 0.3)`);
+      scoreCol = `ROUND(similarity(cl.name, $${params.length})::numeric, 2) AS score`;
+      orderBy = `CASE WHEN lower(cl.name) = lower($${params.length}) THEN 0
+                      WHEN cl.name ILIKE $${params.length} || '%'     THEN 1
+                      WHEN cl.name ILIKE '%' || $${params.length} || '%' THEN 2
+                      ELSE 3 END, similarity(cl.name, $${params.length}) DESC`;
+    }
+
+    if (type) {
+      params.push(type.trim());
+      conditions.push(`cl.card_type ILIKE $${params.length}`);
+    }
+
+    if (attribute) {
+      params.push(attribute.trim().toLowerCase());
+      conditions.push(`cl.attribute = $${params.length}`);
+    }
+
+    const where = `WHERE ${conditions.join(" AND ")}`;
+
     const { rows } = await pool.query(
       `SELECT c.card_id, cl.name, cl.card_type, cl.attribute, cl.atk, cl.def, cl.level,
-              cl.properties, ci.image_url_small,
-              ROUND(similarity(cl.name, $1)::numeric, 2) AS score
+              cl.properties, ci.image_url_small, ${scoreCol}
        FROM cards c
-       JOIN card_localizations cl ON c.card_id = cl.card_id AND cl.language = 'en'
+       JOIN card_localizations cl ON c.card_id = cl.card_id
        LEFT JOIN card_images ci ON c.card_id = ci.card_id AND ci.is_primary = TRUE
-       WHERE cl.name ILIKE '%' || $1 || '%'
-          OR similarity(cl.name, $1) > 0.3
-       ORDER BY
-         CASE WHEN lower(cl.name) = lower($1)      THEN 0
-              WHEN cl.name ILIKE $1 || '%'          THEN 1
-              WHEN cl.name ILIKE '%' || $1 || '%'   THEN 2
-              ELSE 3
-         END,
-         similarity(cl.name, $1) DESC
+       ${where}
+       ORDER BY ${orderBy}
        LIMIT 20`,
-      [term]
+      params
     );
 
-    const decoded = rows.map((card) => ({
-      ...card,
-      property_names: decodeProperties(card.properties),
-    }));
-
-    res.json(decoded);
+    res.json(rows.map((card) => ({ ...card, property_names: decodeProperties(card.properties) })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal server error" });
