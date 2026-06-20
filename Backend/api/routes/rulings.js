@@ -17,7 +17,7 @@ router.get("/", async (req, res) => {
     const page   = Math.max(1, parseInt(req.query.page)  || 1);
     const limit  = Math.min(100, parseInt(req.query.limit) || 20);
     const offset = (page - 1) * limit;
-    const { card, status, search } = req.query;
+    const { card, status, search, tag } = req.query;
 
     if (status && typeof status !== "string") {
       return res.status(400).json({ error: "Invalid status parameter" });
@@ -57,6 +57,11 @@ router.get("/", async (req, res) => {
         where += ` AND r.translation_status = $${params.length}`;
       }
 
+      if (tag) {
+        params.push(`k:${tag.trim()}`);
+        where += ` AND $${params.length} = ANY(r.tags)`;
+      }
+
       let orderBy = "r.ruling_id";
 
       if (search) {
@@ -90,6 +95,13 @@ router.get("/", async (req, res) => {
     if (status) {
       params.push(status);
       where = `WHERE translation_status = $${params.length}`;
+    }
+
+    if (tag) {
+      params.push(`k:${tag.trim()}`);
+      where = where
+        ? `${where} AND $${params.length} = ANY(tags)`
+        : `WHERE $${params.length} = ANY(tags)`;
     }
 
     if (search) {
