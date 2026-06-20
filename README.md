@@ -10,6 +10,9 @@ A REST API and PostgreSQL database containing 15,000+ Yu-Gi-Oh! rulings and 14,0
 - Browse and query 15,000+ official rulings
 - Resolve card references within ruling text
 - RESTful API built with Node.js and Express
+- PostgreSQL-backed data storage
+- Question/Answer retrieval and posting
+
 - PostgreSQL-backed relational data storage
 
 ## Tech Stack
@@ -28,6 +31,8 @@ Current database contents include:
 - 14,000+ Yu-Gi-Oh! cards
 - Historical print information
 - Official ruling metadata
+- Questions from in-app users
+- Responses from other in-app users
 - Card images and reference data
 
 ## Getting Started
@@ -63,6 +68,8 @@ npm run dev
 
 ## Future Improvements
 
+- User Friendly UI
+- Q&A System for users to ask and answer questions
 - Advanced filtering and search
 - User-friendly web interface
 - Q&A system for users to ask and answer ruling questions
