@@ -18,6 +18,7 @@ A REST API and PostgreSQL database containing 15,000+ Yu-Gi-Oh! rulings and 14,0
 - Express.js
 - PostgreSQL
 - Jest
+- React.js
 
 ## Dataset
 
