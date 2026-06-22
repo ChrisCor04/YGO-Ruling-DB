@@ -9,6 +9,7 @@ const rulingsRouter = require("./routes/rulings");
 const cardsRouter = require("./routes/cards");
 const questionsRouter = require("./routes/questions");
 const userRouter = require("./routes/user");
+const pool = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +28,20 @@ app.use("/api", limiter);
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+app.get("/api/tags", async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT unnest(tags) AS tag FROM rulings ORDER BY tag`
+    );
+    const categories = rows.map(r => r.tag).filter(t => t.startsWith("k:")).map(t => t.slice(2));
+    const topics = rows.map(r => r.tag).filter(t => t.startsWith("o:")).map(t => t.slice(2));
+    res.json({ categories, topics });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 app.use("/api/rulings", rulingsRouter);
