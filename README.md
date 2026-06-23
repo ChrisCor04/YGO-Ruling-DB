@@ -12,7 +12,8 @@ A REST API and PostgreSQL database containing 15,000+ Yu-Gi-Oh! rulings and 14,0
 - RESTful API built with Node.js and Express
 - PostgreSQL-backed data storage
 - Question/Answer retrieval and posting
-
+- Search and filter rulings and questions using tags
+- Secure server-side authentication with JWT (JSON Web Tokens)
 - PostgreSQL-backed relational data storage
 
 ## Tech Stack
