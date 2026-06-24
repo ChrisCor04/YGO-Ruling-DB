@@ -68,8 +68,7 @@ router.get("/", async (req, res) => {
 
     res.json(rows.map((card) => ({ ...card, property_names: decodeProperties(card.properties) })));
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    next(err);
   }
 });
 
@@ -115,8 +114,7 @@ router.get("/:id", async (req, res) => {
 
     res.json({ ...card, prints, artworks });
   } catch (err) { // log an error if something goes wrong with the database query, and return a 500 error to the client
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    next(err);
   }
 });
 
@@ -152,8 +150,7 @@ router.get("/:id/rulings", async (req, res) => {
 
     res.json(resolved);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    next(err);
   }
 });
 

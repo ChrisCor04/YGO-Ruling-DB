@@ -30,6 +30,7 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// return api tags for filtering rulings, returns catagories and topics mapped by k and o.
 app.get("/api/tags", async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -39,8 +40,7 @@ app.get("/api/tags", async (req, res) => {
     const topics = rows.map(r => r.tag).filter(t => t.startsWith("o:")).map(t => t.slice(2));
     res.json({ categories, topics });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    next(err);
   }
 });
 
@@ -48,6 +48,12 @@ app.use("/api/rulings", rulingsRouter);
 app.use("/api/cards", cardsRouter);
 app.use("/api/questions", questionsRouter);
 app.use("/api", userRouter);
+
+// Use a global error handler to catch unhandled errors
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: "Internal server error" });
+});
 
 // Only start listening when run directly, not when imported by tests
 if (require.main === module) {
