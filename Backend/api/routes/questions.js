@@ -6,21 +6,50 @@ const router = express.Router();
 
 // GET /api/questions - list all questions, newest first
 router.get("/", async (req, res) => {
+  const { status, card_id } = req.query;
+
+  const validStatuses = ["open", "answered", "closed"];
+
+  if (status && !validStatuses.includes(status)){
+    return res.status(400).json({error: "Invalid status filter"});
+  }
+
   try {
+    const params = [];
+    const conditions = [];
+
+    if (status){
+      params.push(status);
+      conditions.push(`q.status = $${params.length}`);
+    }
+
+    if (card_id){
+      const cardIdInt = parseInt(card_id, 10);
+      if (!Number.isFinite(cardIdInt) || cardIdInt < 1) {
+        return res.status(400).json({error: "Invalid card id"});
+      }
+      params.push(cardIdInt);
+      conditions.push(`q.card_id = $${params.length}`);
+    }
+
+    const whereSQL = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
     const { rows } = await pool.query(
       `SELECT q.question_id, q.title, q.status, q.created_at,
               q.card_id, cl.name AS card_name
-       FROM questions q
-       LEFT JOIN card_localizations cl ON q.card_id = cl.card_id AND cl.language = 'en'
-       ORDER BY q.created_at DESC
-       LIMIT 50`
+      FROM questions q
+      LEFT JOIN card_localizations cl ON q.card_id = cl.card_id AND cl.language = 'en'
+      ${whereSQL}
+      ORDER BY q.created_at DESC
+      LIMIT 50`,
+      params
     );
     res.json(rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    next(err);
   }
 });
+
 
 // GET /api/questions/:id - single question with full body
 router.get("/:id", async (req, res) => {
@@ -42,8 +71,7 @@ router.get("/:id", async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: "Not found" });
     res.json(rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    next(err);
   }
 });
 
@@ -67,8 +95,7 @@ router.post("/", requireAuth, async (req, res) => {
     );
     res.status(201).json(rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    next(err);
   }
 });
 
@@ -89,8 +116,7 @@ router.get("/:id/answers", async (req, res) => {
     );
     res.json(rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    next(err);
   }
 });
 
@@ -127,8 +153,7 @@ router.post("/:id/answers", requireAuth, requireRole("judge"), async (req, res) 
 
     res.status(201).json(rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    next(err);
   }
 });
 

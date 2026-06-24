@@ -138,8 +138,7 @@ router.get("/", async (req, res) => {
       results: rows.map((r) => ({ ...r, ...decodeTags(r.tags) })),
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+      next(err);
   }
 });
 
@@ -180,8 +179,7 @@ router.get("/:id", async (req, res) => {
 
     res.json({ ...ruling, ...decodeTags(ruling.tags), cards });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    next(err);
   }
 });
 
