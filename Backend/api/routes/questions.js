@@ -1,6 +1,7 @@
 const express = require("express");
 const pool = require("../db");
 const { requireAuth, requireRole } = require("../middleware/auth");
+const extractCards = require("../utils/extractCards");
 
 const router = express.Router();
 
@@ -50,6 +51,63 @@ router.get("/", async (req, res) => {
   }
 });
 
+
+// GET /api/questions/similar?q= - find questions similar to a freeform query
+// Must be before /:id so Express doesn't treat "similar" as an ID
+router.get("/similar", async (req, res) => {
+  const { q } = req.query;
+  if (!q || q.trim().length < 3) {
+    return res.status(400).json({ error: "Query must be at least 3 characters" });
+  }
+
+  const query = q.trim();
+
+  try {
+    // Step 1: extract all card names mentioned in the query via n-gram cross-join
+    const cards = await extractCards(query);
+    const cardIds = cards.map((c) => c.card_id);
+
+    // Step 2: find questions linked to those cards
+    let cardMatches = [];
+    if (cardIds.length > 0) {
+      const { rows } = await pool.query(
+        `SELECT q.question_id, q.title, q.status, q.created_at,
+                q.card_id, cl.name AS card_name
+         FROM questions q
+         LEFT JOIN card_localizations cl ON q.card_id = cl.card_id AND cl.language = 'en'
+         WHERE q.card_id = ANY($1)
+         ORDER BY q.created_at DESC
+         LIMIT 10`,
+        [cardIds]
+      );
+      cardMatches = rows;
+    }
+
+    // Step 3: keyword fallback — search question titles for matching words
+    // Uses inline tsvector since questions table has no search_vector column
+    const { rows: keywordMatches } = await pool.query(
+      `SELECT q.question_id, q.title, q.status, q.created_at,
+              q.card_id, cl.name AS card_name
+       FROM questions q
+       LEFT JOIN card_localizations cl ON q.card_id = cl.card_id AND cl.language = 'en'
+       WHERE to_tsvector('english', q.title) @@ websearch_to_tsquery('english', $1)
+       ORDER BY q.created_at DESC
+       LIMIT 10`,
+      [query]
+    );
+
+    // Merge — card matches first, then keyword matches that weren't already returned
+    const seen = new Set(cardMatches.map((r) => r.question_id));
+    const combined = [
+      ...cardMatches,
+      ...keywordMatches.filter((r) => !seen.has(r.question_id)),
+    ];
+
+    res.json({ matched_cards: cards, results: combined });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // GET /api/questions/:id - single question with full body
 router.get("/:id", async (req, res) => {

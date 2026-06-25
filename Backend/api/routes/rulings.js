@@ -2,6 +2,7 @@ const express = require("express");
 const pool = require("../db");
 const resolveCardNames = require("../utils/resolveCardNames");
 const decodeTags = require("../utils/decodeTags");
+const extractCards = require("../utils/extractCards");
 
 const router = express.Router();
 
@@ -139,6 +140,65 @@ router.get("/", async (req, res) => {
     });
   } catch (err) {
       next(err);
+  }
+});
+
+// GET /api/rulings/similar?q= - find rulings similar to a freeform query
+// Must be before /:id so Express doesn't treat "similar" as an ID
+router.get("/similar", async (req, res) => {
+  const { q } = req.query;
+  if (!q || q.trim().length < 3) {
+    return res.status(400).json({ error: "Query must be at least 3 characters" });
+  }
+
+  const query = q.trim();
+  const page  = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(50, parseInt(req.query.limit) || 20);
+  const offset = (page - 1) * limit;
+
+  try {
+    // Step 1: extract all card names mentioned in the query via n-gram cross-join
+    const cards = await extractCards(query);
+    const cardIds = cards.map((c) => c.card_id);
+
+    // Step 2: find rulings linked to those cards via ruling_cards junction
+    let cardMatches = [];
+    if (cardIds.length > 0) {
+      const { rows } = await pool.query(
+        `SELECT DISTINCT r.ruling_id, r.title, r.translation_status, r.tags, r.created_at
+         FROM rulings r
+         JOIN ruling_cards rc ON r.ruling_id = rc.ruling_id
+         WHERE rc.card_id = ANY($1)
+         ORDER BY r.ruling_id
+         LIMIT $2 OFFSET $3`,
+        [cardIds, limit, offset]
+      );
+      cardMatches = rows.map((r) => ({ ...r, ...decodeTags(r.tags) }));
+    }
+
+    // Step 3: keyword fallback using the existing search_vector on rulings
+    const { rows: keywordMatches } = await pool.query(
+      `SELECT ruling_id, title, translation_status, tags, created_at,
+              ts_rank(search_vector, websearch_to_tsquery('english', $1)) AS rank
+       FROM rulings
+       WHERE search_vector @@ websearch_to_tsquery('english', $1)
+       ORDER BY rank DESC
+       LIMIT $2 OFFSET $3`,
+      [query, limit, offset]
+    );
+
+    // Merge — card matches first, then keyword matches not already returned
+    const seen = new Set(cardMatches.map((r) => r.ruling_id));
+    const combined = [
+      ...cardMatches,
+      ...keywordMatches
+        .filter((r) => !seen.has(r.ruling_id))
+        .map((r) => ({ ...r, ...decodeTags(r.tags) })),
+    ];
+
+    res.json({ page, limit, matched_cards: cards, results: combined });
+  } catch (err) {
+    next(err);
   }
 });
 
