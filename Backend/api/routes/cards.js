@@ -118,6 +118,25 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// GET /api/cards/:id/questions - return all community questions about a card
+router.get("/:id/questions", async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: "Invalid ID" });
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT question_id, title, status, created_at
+       FROM questions
+       WHERE card_id = $1
+       ORDER BY created_at DESC`,
+      [id]
+    );
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/cards/:id/rulings, return all rulings associated with a card ID.
 router.get("/:id/rulings", async (req, res) => {
   const id = parseId(req.params.id);
