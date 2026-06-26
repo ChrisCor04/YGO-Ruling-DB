@@ -52,8 +52,7 @@ router.get("/", async (req, res) => {
 });
 
 
-// GET /api/questions/similar?q= - find questions similar to a freeform query
-// Must be before /:id so Express doesn't treat "similar" as an ID
+// GET /api/questions/similar?q= - find questions similar to a query string
 router.get("/similar", async (req, res) => {
   const { q } = req.query;
   if (!q || q.trim().length < 3) {
@@ -61,6 +60,9 @@ router.get("/similar", async (req, res) => {
   }
 
   const query = q.trim();
+  const page  = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(50, parseInt(req.query.limit) || 20);
+  const offset = (page - 1) * limit;
 
   try {
     // Step 1: extract all card names mentioned in the query via n-gram cross-join
@@ -77,14 +79,13 @@ router.get("/similar", async (req, res) => {
          LEFT JOIN card_localizations cl ON q.card_id = cl.card_id AND cl.language = 'en'
          WHERE q.card_id = ANY($1)
          ORDER BY q.created_at DESC
-         LIMIT 10`,
-        [cardIds]
+         LIMIT $2 OFFSET $3`,
+        [cardIds, limit, offset]
       );
       cardMatches = rows;
     }
 
     // Step 3: keyword fallback — search question titles for matching words
-    // Uses inline tsvector since questions table has no search_vector column
     const { rows: keywordMatches } = await pool.query(
       `SELECT q.question_id, q.title, q.status, q.created_at,
               q.card_id, cl.name AS card_name
@@ -92,8 +93,8 @@ router.get("/similar", async (req, res) => {
        LEFT JOIN card_localizations cl ON q.card_id = cl.card_id AND cl.language = 'en'
        WHERE to_tsvector('english', q.title) @@ websearch_to_tsquery('english', $1)
        ORDER BY q.created_at DESC
-       LIMIT 10`,
-      [query]
+       LIMIT $2 OFFSET $3`,
+      [query, limit, offset]
     );
 
     // Merge — card matches first, then keyword matches that weren't already returned
@@ -103,7 +104,7 @@ router.get("/similar", async (req, res) => {
       ...keywordMatches.filter((r) => !seen.has(r.question_id)),
     ];
 
-    res.json({ matched_cards: cards, results: combined });
+    res.json({ page, limit, matched_cards: cards, results: combined });
   } catch (err) {
     next(err);
   }
