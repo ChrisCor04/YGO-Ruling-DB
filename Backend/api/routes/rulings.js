@@ -81,10 +81,11 @@ router.get("/", async (req, res) => {
         params
       );
 
+      const resolvedTitles = await resolveCardNames(rows.map((r) => r.title));
       return res.json({
         total: rows.length,
         card: { card_id, name: cardName },
-        results: rows.map((r) => ({ ...r, ...decodeTags(r.tags) })),
+        results: rows.map((r, i) => ({ ...r, title: resolvedTitles[i], ...decodeTags(r.tags) })),
       });
     }
 
@@ -132,11 +133,12 @@ router.get("/", async (req, res) => {
       countParams
     );
 
+    const resolvedTitles = await resolveCardNames(rows.map((r) => r.title));
     res.json({
       page,
       limit,
       total: parseInt(countRows[0].total),
-      results: rows.map((r) => ({ ...r, ...decodeTags(r.tags) })),
+      results: rows.map((r, i) => ({ ...r, title: resolvedTitles[i], ...decodeTags(r.tags) })),
     });
   } catch (err) {
       next(err);
