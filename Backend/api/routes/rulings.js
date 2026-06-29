@@ -198,7 +198,10 @@ router.get("/similar", async (req, res) => {
         .map((r) => ({ ...r, ...decodeTags(r.tags) })),
     ];
 
-    res.json({ page, limit, matched_cards: cards, results: combined });
+    const resolvedTitles = await resolveCardNames(combined.map((r) => r.title));
+    const results = combined.map((r, i) => ({ ...r, title: resolvedTitles[i] }));
+
+    res.json({ page, limit, matched_cards: cards, results });
   } catch (err) {
     next(err);
   }
