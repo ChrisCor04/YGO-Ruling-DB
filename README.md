@@ -13,6 +13,7 @@ A REST API and PostgreSQL database containing 15,000+ Yu-Gi-Oh! rulings and 14,0
 - PostgreSQL-backed data storage
 - Question/Answer retrieval and posting
 - Search and filter rulings and questions using tags
+- Resolve Question and Answer card_ids to card names within stored rulings
 - Secure server-side authentication with JWT (JSON Web Tokens)
 - PostgreSQL-backed relational data storage
 
