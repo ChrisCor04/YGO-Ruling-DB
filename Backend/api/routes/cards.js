@@ -159,8 +159,9 @@ router.get("/:id/rulings", async (req, res) => {
   // resolve the rulings' text fields to replace any <<card_id>> placeholders with actual card names. This is done in parallel for all rulings using Promise.all, and the resolveCardNames function is called for each text field that may contain placeholders. The resolved rulings are then returned as JSON to the client.
     const resolved = await Promise.all(
       rows.map(async (ruling) => {
-        [ruling.question_text, ruling.answer_text, ruling.ruling_text] =
+        [ruling.title, ruling.question_text, ruling.answer_text, ruling.ruling_text] =
           await resolveCardNames([
+            ruling.title,
             ruling.question_text,
             ruling.answer_text,
             ruling.ruling_text,
