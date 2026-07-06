@@ -84,8 +84,8 @@ router.get("/:id", async (req, res) => {
       `SELECT c.card_id, cl.name, cl.effect_text, cl.atk, cl.def,
               cl.attribute, cl.card_type, cl.level, cl.link_arrows, cl.properties,
               ci.image_url_small,
-              (SELECT COUNT(*) FROM questions WHERE card_id = c.card_id) as question_count,
-              (SELECT COUNT(*) FROM ruling_cards WHERE card_id = c.card_id) as ruling_count
+              (SELECT COUNT(*) FROM questions WHERE card_id = c.card_id)::int as question_count,
+              (SELECT COUNT(*) FROM ruling_cards WHERE card_id = c.card_id)::int as ruling_count
        FROM cards c
        JOIN card_localizations cl ON c.card_id = cl.card_id AND cl.language = 'en'
        LEFT JOIN card_images ci ON c.card_id = ci.card_id AND ci.is_primary = TRUE
@@ -159,8 +159,9 @@ router.get("/:id/rulings", async (req, res) => {
   // resolve the rulings' text fields to replace any <<card_id>> placeholders with actual card names. This is done in parallel for all rulings using Promise.all, and the resolveCardNames function is called for each text field that may contain placeholders. The resolved rulings are then returned as JSON to the client.
     const resolved = await Promise.all(
       rows.map(async (ruling) => {
-        [ruling.question_text, ruling.answer_text, ruling.ruling_text] =
+        [ruling.title, ruling.question_text, ruling.answer_text, ruling.ruling_text] =
           await resolveCardNames([
+            ruling.title,
             ruling.question_text,
             ruling.answer_text,
             ruling.ruling_text,
