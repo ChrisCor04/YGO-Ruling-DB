@@ -84,8 +84,8 @@ router.get("/:id", async (req, res) => {
       `SELECT c.card_id, cl.name, cl.effect_text, cl.atk, cl.def,
               cl.attribute, cl.card_type, cl.level, cl.link_arrows, cl.properties,
               ci.image_url_small,
-              (SELECT COUNT(*) FROM questions WHERE card_id = c.card_id) as question_count,
-              (SELECT COUNT(*) FROM ruling_cards WHERE card_id = c.card_id) as ruling_count
+              (SELECT COUNT(*) FROM questions WHERE card_id = c.card_id)::int as question_count,
+              (SELECT COUNT(*) FROM ruling_cards WHERE card_id = c.card_id)::int as ruling_count
        FROM cards c
        JOIN card_localizations cl ON c.card_id = cl.card_id AND cl.language = 'en'
        LEFT JOIN card_images ci ON c.card_id = ci.card_id AND ci.is_primary = TRUE
