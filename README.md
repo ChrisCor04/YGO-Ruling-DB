@@ -2,6 +2,11 @@
 
 A REST API and PostgreSQL database containing 15,000+ Yu-Gi-Oh! rulings and 14,000+ card records sourced from YGOResources and related public card data APIs.
 
+## Motivation
+
+Existing Yu-Gi-Oh! resources are fragmented across multiple websites and often lack flexible APIs for developers. This project centralizes official ruling data into a normalized relational database while providing a backend API optimized for fast search, fuzzy matching, and future community features.
+
+
 ## Features
 
 - Search cards using fuzzy matching and partial names
