@@ -56,7 +56,8 @@ router.get("/", async (req, res) => {
 
     const { rows } = await pool.query(
       `SELECT c.card_id, cl.name, cl.card_type, cl.attribute, cl.atk, cl.def, cl.level,
-              cl.properties, ci.image_url_small, ${scoreCol}
+              cl.properties, ci.image_url_small, ${scoreCol},
+              (SELECT COUNT(*) FROM ruling_cards WHERE card_id = c.card_id)::int AS ruling_count
        FROM cards c
        JOIN card_localizations cl ON c.card_id = cl.card_id
        LEFT JOIN card_images ci ON c.card_id = ci.card_id AND ci.is_primary = TRUE
