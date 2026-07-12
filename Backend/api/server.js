@@ -31,7 +31,7 @@ app.get("/health", (req, res) => {
 });
 
 // return api tags for filtering rulings, returns catagories and topics mapped by k and o.
-app.get("/api/tags", async (req, res) => {
+app.get("/api/tags", async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT DISTINCT unnest(tags) AS tag FROM rulings ORDER BY tag`
@@ -39,6 +39,20 @@ app.get("/api/tags", async (req, res) => {
     const categories = rows.map(r => r.tag).filter(t => t.startsWith("k:")).map(t => t.slice(2));
     const topics = rows.map(r => r.tag).filter(t => t.startsWith("o:")).map(t => t.slice(2));
     res.json({ categories, topics });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get("/api/stats", async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT
+        (SELECT COUNT(*) FROM rulings)::int   AS total_rulings,
+        (SELECT COUNT(*) FROM cards)::int     AS total_cards,
+        (SELECT COUNT(*) FROM questions)::int AS total_questions`
+    );
+    res.json(rows[0]);
   } catch (err) {
     next(err);
   }
