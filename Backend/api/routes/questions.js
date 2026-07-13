@@ -37,7 +37,8 @@ router.get("/", async (req, res) => {
 
     const { rows } = await pool.query(
       `SELECT q.question_id, q.title, q.status, q.created_at,
-              q.card_id, cl.name AS card_name
+              q.card_id, cl.name AS card_name,
+              (SELECT COUNT(*) FROM answers WHERE question_id = q.question_id)::int AS answer_count
       FROM questions q
       LEFT JOIN card_localizations cl ON q.card_id = cl.card_id AND cl.language = 'en'
       ${whereSQL}
