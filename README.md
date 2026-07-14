@@ -87,4 +87,5 @@ npm run dev
 - Public deployment
 - API documentation
 - Performance optimization
+- Judge Application System
 
